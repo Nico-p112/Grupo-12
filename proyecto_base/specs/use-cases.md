@@ -1,6 +1,6 @@
 # Casos de uso
 
-## UC-01: [nombre del caso de uso]
+## UC-01: [Liquidar siniestro]
 
 **Actor:** Liquidador de siniestros (principal). Gerente de Siniestros (secundarios, solo en el flujo alternativo)
 
