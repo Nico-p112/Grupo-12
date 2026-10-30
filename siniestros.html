@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Denuncia de siniestros · Aseguradora Pampa</title>
+<style>
+:root{--ink:#13283a;--mute:#5b6b78;--bg:#eef2f4;--panel:#fff;--line:#d3dbe1;--acc:#0e6a68;--accbg:#e1f0ef;--warn:#a84e08;--warnbg:#fbeedd;--err:#a3262a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{padding:20px 24px 8px}
+h1{margin:0;font:600 26px/1.2 Georgia,"Times New Roman",serif}
+header p{margin:4px 0 0;color:var(--mute)}
+main{display:grid;grid-template-columns:minmax(280px,360px) 1fr;gap:16px;padding:12px 24px 56px;align-items:start}
+@media(max-width:820px){main{grid-template-columns:1fr;padding:12px 14px 56px}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;margin-bottom:16px}
+h2{margin:0 0 10px;font:600 18px Georgia,serif}
+h3{margin:0 0 8px;font:600 16px Georgia,serif}
+label{display:block;margin:10px 0 3px;font-weight:600;font-size:13px}
+input[type=text],input[type=number],select,textarea{width:100%;padding:8px;border:1px solid var(--line);border-radius:4px;font:inherit;background:#fff;color:inherit}
+textarea{min-height:72px;resize:vertical}
+button{font:inherit;cursor:pointer;border-radius:4px;border:1px solid var(--acc);background:var(--acc);color:#fff;padding:8px 14px;margin-top:12px}
+button.sec{background:#fff;color:var(--acc)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #7fc4c1;outline-offset:1px}
+.item{display:block;width:100%;text-align:left;margin:0 0 6px;background:#fff;color:var(--ink);border-color:var(--line)}
+.item.on{border-color:var(--acc);background:var(--accbg)}
+.item b{font-variant-numeric:tabular-nums}
+.item small{display:block;color:var(--mute)}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;background:var(--accbg);color:var(--acc);font-size:12px;font-weight:600}
+.tag.w{background:var(--warnbg);color:var(--warn)}
+.row{display:grid;grid-template-columns:150px 1fr;gap:4px 12px;margin:0}
+.row dt{color:var(--mute)}.row dd{margin:0}
+.note{padding:10px 12px;border-radius:4px;background:var(--warnbg);color:var(--warn);margin-top:10px}
+.fotos{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.fotos img{width:96px;height:72px;object-fit:cover;border:1px solid var(--line);border-radius:4px}
+.empty{color:var(--mute)}
+.radios label{display:inline-block;margin-right:16px;font-weight:400}
+#msg{position:fixed;left:0;right:0;bottom:0;margin:0;padding:10px 24px;font-weight:600;background:var(--panel);border-top:1px solid var(--line);min-height:0}
+#msg:empty{display:none}#msg.ok{color:var(--acc)}#msg.err{color:var(--err)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Denuncia de siniestros</h1>
+  <p>Aseguradora Pampa. Prototipo con datos en memoria: se pierden al recargar la página.</p>
+</header>
+<main>
+  <section>
+    <form id="f-den" class="panel" autocomplete="off">
+      <h2>Registrar denuncia</h2>
+      <label for="canal">Canal por el que llegó</label>
+      <select id="canal" required></select>
+      <label for="aseg">Asegurado</label>
+      <input type="text" id="aseg">
+      <label for="poliza">Póliza</label>
+      <input type="text" id="poliza">
+      <label for="desc">Descripción</label>
+      <textarea id="desc"></textarea>
+      <button type="submit">Registrar denuncia</button>
+    </form>
+    <div class="panel"><h2>Denuncias</h2><div id="lista"></div></div>
+  </section>
+  <section id="detalle"></section>
+</main>
+<p id="msg" role="status" aria-live="polite"></p>
+
+<script>
+// Valores de configuración (la especificación no los define: opción más simple).
+const CANALES = ['Teléfono (0800)', 'Correo electrónico', 'Mensajería', 'Aviso del productor'];
+const ESTADOS = ['Denunciada', 'En peritaje', 'En liquidación', 'En autorización', 'Oferta enviada', 'Rechazada'];
+const UMBRAL = 8000000; // monto a partir del cual se exige autorización del Gerente (RF-05)
+
+let siniestros = [], proximo = 1001, sel = null;
+
+const $ = s => document.querySelector(s);
+const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => '$ ' + Number(n).toLocaleString('es-AR');
+const ahora = () => new Date().toLocaleString('es-AR');
+const actual = () => siniestros.find(s => s.numero === sel);
+function aviso(t, err) { const m = $('#msg'); m.textContent = t; m.className = err ? 'err' : 'ok'; }
+
+// RF-05: devuelve el motivo por el que NO se puede ofrecer el monto, o '' si se puede.
+function motivoSinOferta(s) {
+  const l = s.liq;
+  if (!l || !l.cubierto) return 'No se puede ofrecer el monto: primero hay que registrar la liquidación con cobertura y monto.';
+  if (l.requiereAut && !l.autorizado) return 'No se puede ofrecer el monto: falta la autorización del Gerente de Siniestros.';
+  return '';
+}
+
+// RF-01 y RF-02: registrar la denuncia con canal y número único.
+$('#canal').innerHTML = '<option value="">Elegí un canal</option>' + CANALES.map(c => `<option>${esc(c)}</option>`).join('');
+$('#f-den').addEventListener('submit', e => {
+  e.preventDefault();
+  const canal = $('#canal').value;
+  if (!canal) return aviso('Falta el canal: elegí por dónde llegó la denuncia.', true);
+  const s = { numero: proximo++, canal, asegurado: $('#aseg').value.trim(), poliza: $('#poliza').value.trim(),
+    descripcion: $('#desc').value.trim(), fecha: ahora(), estado: 'Denunciada', pericia: null, liq: null };
+  siniestros.push(s); sel = s.numero;
+  e.target.reset(); render(); aviso(`Denuncia registrada con el número ${s.numero}.`);
+});
+
+function render() { renderLista(); renderDetalle(); }
+
+function renderLista() {
+  $('#lista').innerHTML = siniestros.length
+    ? siniestros.slice().reverse().map(s => `<button type="button" class="item${s.numero === sel ? ' on' : ''}" data-num="${s.numero}">
+        <b>N.º ${s.numero}</b> · ${esc(s.estado)}<small>${esc(s.canal)}${s.asegurado ? ' · ' + esc(s.asegurado) : ''}</small></button>`).join('')
+    : '<p class="empty">Todavía no hay denuncias. Registrá la primera con el formulario.</p>';
+}
+$('#lista').addEventListener('click', e => {
+  const b = e.target.closest('[data-num]'); if (b) { sel = +b.dataset.num; render(); }
+});
+
+function renderDetalle() {
+  const s = actual(), d = $('#detalle');
+  if (!s) { d.innerHTML = '<div class="panel"><p class="empty">Elegí una denuncia de la lista para ver su detalle, cargar la pericia y liquidarla.</p></div>'; return; }
+  d.innerHTML = datosHTML(s) + periciaHTML(s) + liquidacionHTML(s);
+}
+
+// RF-01 (canal visible en la consulta) y RF-04 (estado de una lista definida).
+function datosHTML(s) {
+  return `<div class="panel"><h2>Denuncia N.º ${s.numero}</h2>
+  <dl class="row"><dt>Canal</dt><dd>${esc(s.canal)}</dd><dt>Asegurado</dt><dd>${esc(s.asegurado) || '—'}</dd>
+  <dt>Póliza</dt><dd>${esc(s.poliza) || '—'}</dd><dt>Descripción</dt><dd>${esc(s.descripcion) || '—'}</dd>
+  <dt>Registrada</dt><dd>${esc(s.fecha)}</dd></dl>
+  <label for="estado">Estado</label>
+  <select id="estado" data-act="estado">${ESTADOS.map(x => `<option${x === s.estado ? ' selected' : ''}>${x}</option>`).join('')}</select></div>`;
+}
+
+// RF-03: informe de pericia con fotos asociado al siniestro.
+function periciaHTML(s) {
+  if (s.pericia) {
+    const p = s.pericia;
+    return `<div class="panel"><h3>Informe de pericia</h3><p>${esc(p.texto)}</p>
+    <div class="fotos">${p.fotos.map(f => `<a href="${f.url}" target="_blank" rel="noopener"><img src="${f.url}" alt="${esc(f.nombre)}"></a>`).join('') || '<span class="empty">Sin fotos adjuntas.</span>'}</div>
+    <p class="empty">Registrado el ${esc(p.fecha)}.</p></div>`;
+  }
+  return `<div class="panel"><h3>Informe de pericia</h3>
+  <label for="ptxt">Informe del perito</label><textarea id="ptxt"></textarea>
+  <label for="pfotos">Fotos adjuntas</label><input type="file" id="pfotos" accept="image/*" multiple>
+  <button type="button" data-act="pericia">Registrar informe</button></div>`;
+}
+
+// UC-01: liquidar siniestro.
+function liquidacionHTML(s) {
+  const t = '<h3>Liquidar siniestro</h3>';
+  if (!s.pericia) return `<div class="panel">${t}<p class="empty">Disponible cuando el informe de pericia esté registrado.</p></div>`;
+  const informe = `<details open><summary>Informe de pericia (consulta)</summary><p>${esc(s.pericia.texto)}</p></details>`;
+  const l = s.liq;
+  if (s.estado === 'En liquidación') return `<div class="panel">${t}${informe}
+    <div class="radios"><label>Cobertura</label>
+    <label><input type="radio" name="cub" value="si" checked> Cubierto</label>
+    <label><input type="radio" name="cub" value="no"> No cubierto</label></div>
+    <label for="monto">Monto a pagar (en pesos)</label><input type="number" id="monto" min="0" step="1">
+    <button type="button" data-act="liquidar">Registrar liquidación</button></div>`;
+  if (s.estado === 'En autorización' && l) return `<div class="panel">${t}${informe}
+    <p>Monto a pagar: <b>${money(l.monto)}</b></p>
+    <div class="note">El monto supera ${money(UMBRAL)} y requiere la autorización del Gerente de Siniestros antes de ofrecerlo.</div>
+    <button type="button" data-act="autorizar">Registrar autorización del Gerente</button></div>`;
+  if (l) return `<div class="panel">${t}${informe}<dl class="row"><dt>Cobertura</dt><dd>${l.cubierto ? 'Cubierto' : 'No cubierto'}</dd>
+    ${l.cubierto ? `<dt>Monto</dt><dd>${money(l.monto)}</dd>` : ''}<dt>Autorización</dt><dd>${l.requiereAut ? (l.autorizado ? 'Registrada' : 'Pendiente') : 'No requerida'}</dd>
+    <dt>Fecha</dt><dd>${esc(l.fecha || '—')}</dd></dl></div>`;
+  return `<div class="panel">${t}${informe}<p class="empty">La liquidación se inicia cuando el siniestro está En liquidación.</p></div>`;
+}
+
+$('#detalle').addEventListener('change', e => {
+  if (e.target.dataset.act !== 'estado') return;
+  const s = actual(), nuevo = e.target.value;
+  if (nuevo === 'Oferta enviada') { const m = motivoSinOferta(s); if (m) { e.target.value = s.estado; return aviso(m, true); } }
+  s.estado = nuevo; render(); aviso(`Estado cambiado a «${nuevo}».`);
+});
+
+$('#detalle').addEventListener('click', e => {
+  const act = e.target.dataset.act; if (!act || act === 'estado') return;
+  const s = actual();
+  if (act === 'pericia') {
+    const texto = $('#ptxt').value.trim();
+    if (!texto) return aviso('Falta el informe: escribí lo que encontró el perito.', true);
+    const fotos = [...$('#pfotos').files].filter(f => f.type.startsWith('image/')).map(f => ({ nombre: f.name, url: URL.createObjectURL(f) }));
+    s.pericia = { texto, fotos, fecha: ahora() };
+    if (s.estado === 'Denunciada' || s.estado === 'En peritaje') s.estado = 'En liquidación';
+    render(); aviso('Informe de pericia registrado. El siniestro pasa a En liquidación.');
+  }
+  if (act === 'liquidar') {
+    if (document.querySelector('input[name=cub]:checked').value === 'no') {   // alternativo 3a
+      s.liq = { cubierto: false, monto: 0, requiereAut: false, autorizado: false, fecha: ahora() };
+      s.estado = 'Rechazada'; render(); return aviso('Siniestro no cubierto: rechazo registrado.');
+    }
+    const monto = Number($('#monto').value);
+    if (!(monto > 0)) return aviso('Falta el monto: cargá un monto mayor a cero.', true);
+    const req = monto > UMBRAL;                                               // paso 5
+    s.liq = { cubierto: true, monto, requiereAut: req, autorizado: false, fecha: req ? null : ahora() };
+    if (req) { s.estado = 'En autorización'; render(); return aviso('El monto requiere autorización del Gerente.'); }  // alternativo 5a
+    s.estado = 'Oferta enviada'; render(); aviso('Liquidación registrada. Oferta enviada.');                         // paso 6
+  }
+  if (act === 'autorizar') {
+    s.liq.autorizado = true; s.liq.fecha = ahora();
+    s.estado = 'Oferta enviada'; render(); aviso('Autorización registrada. Liquidación registrada y oferta enviada.');
+  }
+});
+
+render();
+</script>
+</body>
+</html>
