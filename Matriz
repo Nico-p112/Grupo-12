@@ -1,0 +1,11 @@
+### 4.4 Matriz de trazabilidad
+
+| Fuente | Issue | Requerimiento | CU / modelo | Criterio | Commit |
+| --- | --- | --- | --- | --- | --- |
+| Caso 3.3; acta 2 caso 3.5; acta 3 caso 3.5 | KAN- 10 | RF-001 V2 | Contexto (flujo «denuncia de siniestro»); DFD 1; estados Denunciada e Incompleta | RF-001 · A, B y C | KAN-15: RF-001 pasa a la versión 2 |
+| Acta 2 caso 3.5; Voz de K. Sosa | KAN - 11 | RF - 002 | DFD 1; D1 Siniestros | RF-002 | Update functional requirements with new IDs (421ad2a) |
+| Caso 3.3 | KAN - 12 | RF - 003 | UC-01 (paso 2, include UC-02) | RF-003 | Update use case UC-01 with detailed flow and conditions (4d4e29f) |
+| Caso 3.3; acta 2 caso 3.7 | KAN – 13 | RF -  004 | Diagrama de estados (lista de estados) | RF-004 | Update functional requirements with new IDs (421ad2a); KAN-15: agrega el estado Incompleta |
+| Caso 3.3; acta 2 caso 3.6 | KAN - 14 | RF - 005 | UC-01 (paso 5, extend UC-03); estado En autorización | RF-005 | Update functional requirements with new IDs (421ad2a) |
+| Acta 3 caso 3.5 | KAN - 23 | RF - 006 | DFD 1 (procesos nuevos); estado Incompleta y sus transiciones | RF-006 · A, B y C | KAN-16: agrega RF-006 |
+| Acta 3 caso 3.5 y 4.5 | KAN - 24 | RF – 007 (Pendiente) | Sin modelo | Sin criterio: pendiente de D. Almirón | KAN-17: agrega RF-007 pendiente |
