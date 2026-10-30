@@ -3,5 +3,5 @@ KAN-10: actualiza contexto y nivel 1 con los flujos del asegurado
 KAN-10: agrega el estado Incompleta y sus transiciones
 KAN-10: actualiza tabla de fuentes y criterios de RF-001 y RF-006
 KAN-10: página v2 con carga de fotos y estado Incompleta
-KAN-23: agrega RF-006 denuncia incompleta y plazo de tres días hábiles
-KAN-24: agrega RF-007 datos del tercero (pendiente de decisión)
+KAN-23: agrega RF-006 La regla de los 3 días hábiles y el estado "Incompleta" por falta de fotos es un comportamiento totalmente nuevo del sistema. Necesita su propio ID.
+KAN-24: agrega RF-007 El acta menciona que la denuncia queda incompleta si faltan los "datos del tercero", pero el punto 4.5 del documento aclara que D. Almirón todavía no definió cuáles son esos datos. Se registra el requerimiento, pero se lo deja bloqueado (NEEDS CLARIFICATION) hasta que el usuario lo decida.
