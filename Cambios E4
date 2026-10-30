@@ -1,1 +1,8 @@
 KAN10
+KAN-15: RF-001 pasa a la versión 2 (canal web con fotos)	Edita RF-001 y agrega su historial
+KAN-16: agrega RF-006 denuncia incompleta y plazo de tres días hábiles	Requerimiento nuevo
+KAN-17: agrega RF-007 datos del tercero (pendiente de decisión)	Pendiente con decisor
+KAN-15: actualiza contexto y nivel 1 con los flujos del asegurado	Capítulos 0 y 1
+KAN-15: agrega el estado Incompleta y sus transiciones	Capítulo 1.3
+KAN-15: actualiza tabla de fuentes y criterios de RF-001 y RF-006	Capítulos 1.4 y 3.2
+KAN-15: página v2 con carga de fotos y estado Incompleta	Página regenerada
